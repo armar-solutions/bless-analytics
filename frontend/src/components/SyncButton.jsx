@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Card, Alert, Spinner, Badge } from 'react-bootstrap';
 import { ArrowClockwise, CheckCircle, XCircle, Clock, ClockHistory } from 'react-bootstrap-icons';
+import { useAuth } from '../contexts/AuthContext';
 
 const SyncButton = () => {
   const [syncStatus, setSyncStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { token } = useAuth();
 
   // Fetch sync status on component mount and periodically
   const fetchSyncStatus = async () => {
     try {
-      const response = await fetch('/api/sync/status');
+      const response = await fetch('/api/sync/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -33,6 +39,7 @@ const SyncButton = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
       });
       

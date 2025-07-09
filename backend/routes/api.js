@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const { runSyncWithResults } = require('../sync');
+const { authenticateToken, requireAdmin, requireManager } = require('../middleware/auth');
 
 // Utility function to get the oldest record date across all analytics tables
 const getOldestRecordDate = async () => {
@@ -25,7 +26,7 @@ const getOldestRecordDate = async () => {
 };
 
 // GET /api/contacts
-router.get('/contacts', async (req, res) => {
+router.get('/contacts', authenticateToken, requireManager, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
     res.json(result.rows);
@@ -36,7 +37,7 @@ router.get('/contacts', async (req, res) => {
 });
 
 // GET /api/seminars
-router.get('/seminars', async (req, res) => {
+router.get('/seminars', authenticateToken, requireManager, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM seminars ORDER BY created_at DESC');
     res.json(result.rows);
@@ -47,7 +48,7 @@ router.get('/seminars', async (req, res) => {
 });
 
 // GET /api/course-deals
-router.get('/course-deals', async (req, res) => {
+router.get('/course-deals', authenticateToken, requireManager, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM course_deals ORDER BY created_at DESC');
     res.json(result.rows);
@@ -59,7 +60,7 @@ router.get('/course-deals', async (req, res) => {
 
 // GET /api/mnp-stats
 // Query params: start, end, courseName
-router.get('/mnp-stats', async (req, res) => {
+router.get('/mnp-stats', authenticateToken, requireManager, async (req, res) => {
   const { start, end, courseName } = req.query;
   const paidStatuses = [
     'Сплачено', 'Оплачено', 'Передплата отримана', 'Предоплата проведена',
@@ -114,7 +115,7 @@ router.get('/mnp-stats', async (req, res) => {
 });
 
 // GET /api/mnp-courses
-router.get('/mnp-courses', async (req, res) => {
+router.get('/mnp-courses', authenticateToken, requireManager, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT lower(trim(name)) AS normalized_name
@@ -171,7 +172,7 @@ const coursePaidStatuses = ['Передплата отримана', 'Оплач
 
 // GET /api/learning/overview
 // Query params: type (all, courses, seminars, webinars), dateRange (7d, 30d, 90d, all)
-router.get('/learning/overview', async (req, res) => {
+router.get('/learning/overview', authenticateToken, requireManager, async (req, res) => {
   const { type = 'all', dateRange = '30d' } = req.query;
   
   try {
@@ -334,7 +335,7 @@ router.get('/learning/overview', async (req, res) => {
 
 // GET /api/learning/trends
 // Query params: type, dateRange, start, end
-router.get('/learning/trends', async (req, res) => {
+router.get('/learning/trends', authenticateToken, requireManager, async (req, res) => {
   const { type = 'all', dateRange = '90d', start, end } = req.query;
   try {
     let where = [];
@@ -397,7 +398,7 @@ router.get('/learning/trends', async (req, res) => {
 
 // GET /api/learning/top-products
 // Query params: type, limit, dateRange
-router.get('/learning/top-products', async (req, res) => {
+router.get('/learning/top-products', authenticateToken, requireManager, async (req, res) => {
   const { type = 'all', limit = 10, dateRange = '30d' } = req.query;
   try {
     let topProducts = [];
@@ -496,7 +497,7 @@ router.get('/learning/top-products', async (req, res) => {
 
 // GET /api/learning/products
 // Query params: type, search, limit, offset
-router.get('/learning/products', async (req, res) => {
+router.get('/learning/products', authenticateToken, requireManager, async (req, res) => {
   const { type = 'all', search = '', limit = 50, offset = 0 } = req.query;
   
   try {
@@ -595,7 +596,7 @@ router.get('/learning/products', async (req, res) => {
 // GET /api/students
 // Fetches a list of students with aggregated analytics.
 // Supports filtering by segment and searching by name/email.
-router.get('/students', async (req, res) => {
+router.get('/students', authenticateToken, requireManager, async (req, res) => {
   const { segment, search } = req.query;
 
   try {
@@ -668,7 +669,7 @@ router.get('/students', async (req, res) => {
 
 // GET /api/students/leaderboard
 // Fetches top 10 students by total number of paid deals.
-router.get('/students/leaderboard', async (req, res) => {
+router.get('/students/leaderboard', authenticateToken, requireManager, async (req, res) => {
   try {
     const sql = `
       WITH paid_deals AS (
@@ -701,7 +702,7 @@ router.get('/students/leaderboard', async (req, res) => {
 
 // GET /api/students/:id
 // Fetches detailed information for a single student, including their full deal history.
-router.get('/students/:id', async (req, res) => {
+router.get('/students/:id', authenticateToken, requireManager, async (req, res) => {
   const { id } = req.params;
   try {
     const studentQuery = 'SELECT record_id, name, email, phone_number, created_at FROM contacts WHERE record_id = $1';
@@ -732,7 +733,7 @@ router.get('/students/:id', async (req, res) => {
 
 // GET /api/engagement-over-time
 // Returns monthly active student counts for seminars, webinars, and МНП courses combined
-router.get('/engagement-over-time', async (req, res) => {
+router.get('/engagement-over-time', authenticateToken, requireManager, async (req, res) => {
   try {
     const client = await pool.connect();
     // Helper SQL for each table
@@ -782,7 +783,7 @@ router.get('/engagement-over-time', async (req, res) => {
 
 // GET /api/ads/summary
 // Returns conversions and revenue by channel
-router.get('/ads/summary', async (req, res) => {
+router.get('/ads/summary', authenticateToken, requireManager, async (req, res) => {
   try {
     const sql = `
       SELECT
@@ -809,7 +810,7 @@ router.get('/ads/summary', async (req, res) => {
 
 // GET /api/ads/trends
 // Returns monthly conversions by channel
-router.get('/ads/trends', async (req, res) => {
+router.get('/ads/trends', authenticateToken, requireManager, async (req, res) => {
   try {
     const sql = `
       SELECT
@@ -839,7 +840,7 @@ router.get('/ads/trends', async (req, res) => {
 
 // GET /api/managers/summary
 // Returns total deals, revenue, completed deals, and lost deals per manager
-router.get('/managers/summary', async (req, res) => {
+router.get('/managers/summary', authenticateToken, requireManager, async (req, res) => {
   try {
     const sql = `
       SELECT
@@ -863,7 +864,7 @@ router.get('/managers/summary', async (req, res) => {
 
 // GET /api/managers/trends
 // Returns monthly deals and revenue per manager
-router.get('/managers/trends', async (req, res) => {
+router.get('/managers/trends', authenticateToken, requireManager, async (req, res) => {
   try {
     const sql = `
       SELECT
@@ -892,7 +893,7 @@ router.get('/managers/trends', async (req, res) => {
  * :type = 'webinars' | 'seminars' | 'courses'
  * Returns: [{ stage, label, count, lost }]
  */
-router.get('/funnels/:type', async (req, res) => {
+router.get('/funnels/:type', authenticateToken, requireManager, async (req, res) => {
   const { type } = req.params;
   let { start, end, dateRange } = req.query;
   let oldestDate = null;
@@ -1091,7 +1092,7 @@ router.get('/funnels/:type', async (req, res) => {
 
 // GET /api/debug/compare
 // Debug endpoint to compare learning vs funnels data
-router.get('/debug/compare', async (req, res) => {
+router.get('/debug/compare', authenticateToken, requireAdmin, async (req, res) => {
   const { type = 'courses', dateRange = 'all' } = req.query;
   
   try {
@@ -1253,7 +1254,7 @@ router.get('/debug/compare', async (req, res) => {
 });
 
 // GET /api/debug/statuses
-router.get('/debug/statuses', async (req, res) => {
+router.get('/debug/statuses', authenticateToken, requireAdmin, async (req, res) => {
   res.json({
     paidStatuses,
     webinarPaidStatuses,
@@ -1268,7 +1269,7 @@ router.get('/debug/statuses', async (req, res) => {
 
 // GET /api/funnels/history/:type
 // Returns how many unique deals ever reached each stage (cumulative)
-router.get('/funnels/history/:type', async (req, res) => {
+router.get('/funnels/history/:type', authenticateToken, requireManager, async (req, res) => {
   const { type } = req.params; // 'webinar', 'seminar', 'course'
   const { start, end } = req.query;
 
@@ -1298,7 +1299,7 @@ router.get('/funnels/history/:type', async (req, res) => {
 
 // GET /api/funnels/history/:type/current
 // Returns the current stage for each deal
-router.get('/funnels/history/:type/current', async (req, res) => {
+router.get('/funnels/history/:type/current', authenticateToken, requireManager, async (req, res) => {
   const { type } = req.params;
   const sql = `
     SELECT deal_record_id, new_stage AS stage
@@ -1316,7 +1317,7 @@ router.get('/funnels/history/:type/current', async (req, res) => {
 
 // GET /api/funnels/history/:type/time-in-stage
 // Returns time spent in each stage for each deal
-router.get('/funnels/history/:type/time-in-stage', async (req, res) => {
+router.get('/funnels/history/:type/time-in-stage', authenticateToken, requireManager, async (req, res) => {
   const { type } = req.params;
   const sql = `
     SELECT
@@ -1335,7 +1336,7 @@ router.get('/funnels/history/:type/time-in-stage', async (req, res) => {
 
 // GET /api/funnels/history/:type/as-of
 // Returns the funnel as of a specific date
-router.get('/funnels/history/:type/as-of', async (req, res) => {
+router.get('/funnels/history/:type/as-of', authenticateToken, requireManager, async (req, res) => {
   const { type } = req.params;
   const { asOf } = req.query;
   if (!asOf) return res.status(400).json({ error: 'Missing asOf date' });
@@ -1355,8 +1356,8 @@ router.get('/funnels/history/:type/as-of', async (req, res) => {
   res.json(result.rows);
 });
 
-// Sync endpoint - triggers data synchronization
-router.post('/sync', async (req, res) => {
+// Sync endpoint - triggers data synchronization (Admin only)
+router.post('/sync', authenticateToken, requireAdmin, async (req, res) => {
   try {
     console.log('🔄 Sync requested via API');
     
@@ -1388,8 +1389,8 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-// Sync status endpoint - returns sync history and current status
-router.get('/sync/status', async (req, res) => {
+// Sync status endpoint - returns sync history and current status (Admin only)
+router.get('/sync/status', authenticateToken, requireAdmin, async (req, res) => {
   try {
     // Get the latest sync record
     const latestSyncRes = await pool.query(
@@ -1440,6 +1441,211 @@ router.get('/sync/status', async (req, res) => {
       message: 'Failed to fetch sync status'
     });
   }
+});
+
+// --- User Management Endpoints (Admin Only) ---
+
+// GET /api/users - Get all users (Admin only)
+router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, role, created_at, last_login FROM users ORDER BY created_at DESC'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// POST /api/users - Create new user (Admin only)
+router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
+  const { email, password, role } = req.body;
+
+  // Validation
+  if (!email || !password || !role) {
+    return res.status(400).json({ error: 'Email, password, and role are required' });
+  }
+
+  if (!['admin', 'manager'].includes(role)) {
+    return res.status(400).json({ error: 'Role must be either "admin" or "manager"' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
+  try {
+    // Check if user already exists
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ error: 'User with this email already exists' });
+    }
+
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Create user
+    const result = await pool.query(
+      'INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role, created_at',
+      [email.toLowerCase(), passwordHash, role]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// PUT /api/users/:id - Update user (Admin only)
+router.put('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { email, role, password } = req.body;
+
+  try {
+    // Check if user exists
+    const existingUser = await pool.query(
+      'SELECT id, email FROM users WHERE id = $1',
+      [id]
+    );
+
+    if (existingUser.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let updateFields = [];
+    let params = [];
+    let paramIndex = 1;
+
+    // Update email if provided
+    if (email) {
+      // Check if email is already taken by another user
+      const emailCheck = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email.toLowerCase(), id]
+      );
+      if (emailCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'Email is already taken by another user' });
+      }
+      updateFields.push(`email = $${paramIndex++}`);
+      params.push(email.toLowerCase());
+    }
+
+    // Update role if provided
+    if (role) {
+      if (!['admin', 'manager'].includes(role)) {
+        return res.status(400).json({ error: 'Role must be either "admin" or "manager"' });
+      }
+      updateFields.push(`role = $${paramIndex++}`);
+      params.push(role);
+    }
+
+    // Update password if provided
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+      }
+      const bcrypt = require('bcryptjs');
+      const saltRounds = 12;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+      updateFields.push(`password_hash = $${paramIndex++}`);
+      params.push(passwordHash);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    params.push(id);
+    const updateQuery = `
+      UPDATE users 
+      SET ${updateFields.join(', ')}, updated_at = NOW()
+      WHERE id = $${paramIndex}
+      RETURNING id, email, role, created_at, updated_at
+    `;
+
+    const result = await pool.query(updateQuery, params);
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// DELETE /api/users/:id - Delete user (Admin only)
+router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if user exists
+    const existingUser = await pool.query(
+      'SELECT id, email FROM users WHERE id = $1',
+      [id]
+    );
+
+    if (existingUser.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent admin from deleting themselves
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    // Delete user
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET /api/users/me - Get current user info
+router.get('/users/me', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, role, created_at, last_login FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET /api/test - Test endpoint (Manager or Admin)
+router.get('/test', authenticateToken, requireManager, async (req, res) => {
+  res.json({ message: 'Backend is working correctly!' });
 });
 
 module.exports = router; 

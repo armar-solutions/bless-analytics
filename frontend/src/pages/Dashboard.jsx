@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
   const [message, setMessage] = useState('Loading...');
+  const { token } = useAuth();
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/test')
+    fetch('/api/test', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
       .then(res => res.json())
       .then(data => setMessage(data.message))
       .catch(err => {
         console.error(err);
         setMessage('Failed to fetch data from backend.');
       });
-  }, []);
+  }, [token]);
 
   return (
     <div>

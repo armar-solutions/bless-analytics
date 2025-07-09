@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useAuth } from '../contexts/AuthContext';
 
 const Products = () => {
   const [courses, setCourses] = useState([]);
@@ -9,16 +10,21 @@ const Products = () => {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { token } = useAuth();
 
   // Fetch all unique sub-courses for МНП
   useEffect(() => {
-    fetch('http://localhost:3001/api/mnp-courses')
+    fetch('/api/mnp-courses', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
       .then(res => res.json())
       .then(data => {
         setCourses(data);
         if (data.length > 0) setSelectedCourse(data[0]);
       });
-  }, []);
+  }, [token]);
 
   // Fetch stats when course or date changes
   useEffect(() => {
@@ -29,12 +35,16 @@ const Products = () => {
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     if (selectedCourse) params.append('courseName', selectedCourse);
-    fetch(`http://localhost:3001/api/mnp-stats?${params.toString()}`)
+    fetch(`/api/mnp-stats?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(() => setError('Помилка завантаження статистики'))
       .finally(() => setLoading(false));
-  }, [selectedCourse, start, end]);
+  }, [selectedCourse, start, end, token]);
 
   return (
     <div>

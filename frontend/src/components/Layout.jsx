@@ -1,9 +1,10 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { IoMdExit } from 'react-icons/io';
-import { FiUsers, FiHeadphones } from 'react-icons/fi';
+import { FiUsers, FiHeadphones, FiSettings } from 'react-icons/fi';
 import { FaChartBar, FaGraduationCap, FaUserGraduate, FaSyncAlt } from 'react-icons/fa';
 import { BsFunnel } from 'react-icons/bs';
+import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/blesslogo.svg';
 
 const navItems = [
@@ -13,7 +14,10 @@ const navItems = [
   { name: 'Воронки', path: '/funnels', icon: <BsFunnel color="#6b7280" size={22} /> },
 ];
 
-const syncNavItem = { name: 'Синхронізація', path: '/sync', icon: <FaSyncAlt color="#0ea5e9" size={22} /> };
+const adminNavItems = [
+  { name: 'Синхронізація', path: '/sync', icon: <FaSyncAlt color="#0ea5e9" size={22} /> },
+  { name: 'Управління користувачами', path: '/users', icon: <FiSettings color="#f59e0b" size={22} /> },
+];
 
 const styles = {
   layout: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f8f9fa', fontFamily: "'Inter', sans-serif" },
@@ -67,6 +71,12 @@ const styles = {
 };
 
 const Layout = ({ children }) => {
+  const { user, logout, isAdmin } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
+
   return (
     <div style={styles.layout}>
       <header style={styles.topHeader}>
@@ -76,8 +86,10 @@ const Layout = ({ children }) => {
           </Link>
         </div>
         <div style={{...styles.userSection, position: 'absolute', right: 40, top: '50%', transform: 'translateY(-50%)'}}>
-          <span style={{ opacity: 0.8 }}>Володимир Вихор</span>
-          <IoMdExit style={styles.logoutIcon}/>
+          <span style={{ opacity: 0.8 }}>
+            {user?.email} {isAdmin() && '(Admin)'}
+          </span>
+          <IoMdExit style={styles.logoutIcon} onClick={handleLogout} title="Вийти" />
         </div>
       </header>
       <nav style={styles.secondaryNav}>
@@ -95,19 +107,26 @@ const Layout = ({ children }) => {
             {item.name}
           </NavLink>
         ))}
-        <div style={{ borderLeft: '2px solid #e5e7eb', height: 40, margin: '0 1.5rem' }} />
-        <NavLink
-          key={syncNavItem.name}
-          to={syncNavItem.path}
-          style={({ isActive }) =>
-            isActive
-              ? { ...styles.navLink, ...styles.activeNavLink, fontWeight: 700 }
-              : styles.navLink
-          }
-        >
-          {syncNavItem.icon}
-          {syncNavItem.name}
-        </NavLink>
+        {/* Show admin nav items only for admins */}
+        {isAdmin() && (
+          <>
+            <div style={{ borderLeft: '2px solid #e5e7eb', height: 40, margin: '0 1.5rem' }} />
+            {adminNavItems.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.path}
+                style={({ isActive }) =>
+                  isActive
+                    ? { ...styles.navLink, ...styles.activeNavLink, fontWeight: 700 }
+                    : styles.navLink
+                }
+              >
+                {item.icon}
+                {item.name}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
       <main style={styles.mainContent}>
         {children}

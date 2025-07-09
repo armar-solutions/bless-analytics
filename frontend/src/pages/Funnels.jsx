@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 const FUNNEL_TYPES = [
   { value: 'webinars', label: 'Вебінари' },
@@ -53,6 +54,7 @@ const useFunnelData = (type, dateRange, startDate, endDate) => {
   const [funnelData, setFunnelData] = useState({ funnel: [], lost: 0, converted: 0, totalLeads: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { token } = useAuth();
 
   useEffect(() => {
     setLoading(true);
@@ -61,7 +63,11 @@ const useFunnelData = (type, dateRange, startDate, endDate) => {
     if (dateRange) params.append('dateRange', dateRange);
     if (startDate) params.append('start', startDate);
     if (endDate) params.append('end', endDate);
-    fetch(`http://localhost:3001/api/funnels/${type}?${params}`)
+    fetch(`/api/funnels/${type}?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
       .then(async res => {
         let data;
         try {
@@ -85,7 +91,7 @@ const useFunnelData = (type, dateRange, startDate, endDate) => {
         setFunnelData({ funnel: [], lost: 0, converted: 0, totalLeads: 0 });
         setLoading(false);
       });
-  }, [type, dateRange, startDate, endDate]);
+  }, [type, dateRange, startDate, endDate, token]);
   return { ...funnelData, loading, error };
 };
 

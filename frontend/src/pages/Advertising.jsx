@@ -19,6 +19,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { LineChart as MiniLineChart, Line as MiniLine, ResponsiveContainer as MiniResponsiveContainer } from 'recharts';
 import { FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28CFE', '#FF6699'];
 
@@ -32,18 +33,27 @@ const Managers = () => {
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('revenue');
+  const { token } = useAuth();
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch('http://localhost:3001/api/managers/summary').then(res => res.json()),
-      fetch('http://localhost:3001/api/managers/trends').then(res => res.json())
+      fetch('/api/managers/summary', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }).then(res => res.json()),
+      fetch('/api/managers/trends', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }).then(res => res.json())
     ]).then(([summaryData, trendsData]) => {
       setSummary(summaryData);
       setTrends(trendsData);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [token]);
 
   // Sort managers by selected metric
   const sortedSummary = useMemo(() => {

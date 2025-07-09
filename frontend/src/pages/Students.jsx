@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
 import { FiSearch, FiUser, FiMail, FiPhone, FiAward, FiX } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 // --- Reusable Components ---
 
@@ -74,6 +75,7 @@ const Students = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [engagementData, setEngagementData] = useState([]);
+  const { token } = useAuth();
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,7 +109,11 @@ const Students = () => {
       if (searchTerm) params.append('search', searchTerm);
       
       try {
-        const response = await fetch(`http://localhost:3001/api/students?${params.toString()}`);
+        const response = await fetch(`/api/students?${params.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         const data = await response.json();
         setStudents(data);
       } catch (error) {
@@ -118,30 +124,42 @@ const Students = () => {
     };
     
     fetchStudents();
-  }, [searchTerm, segmentFilter]);
+  }, [searchTerm, segmentFilter, token]);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/students/leaderboard');
+        const response = await fetch('/api/students/leaderboard', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         setLeaderboard(await response.json());
       } catch (error) {
         console.error("Failed to fetch leaderboard:", error);
       }
     };
     fetchLeaderboard();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/engagement-over-time')
+    fetch('/api/engagement-over-time', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
       .then(res => res.json())
       .then(setEngagementData)
       .catch(() => setEngagementData([]));
-  }, []);
+  }, [token]);
 
   const handleSelectStudent = async (studentId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/students/${studentId}`);
+      const response = await fetch(`/api/students/${studentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       setSelectedStudent(await response.json());
     } catch (error) {
       console.error("Failed to fetch student details:", error);

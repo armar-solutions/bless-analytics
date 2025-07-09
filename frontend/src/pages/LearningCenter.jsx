@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, LabelList } from 'recharts';
 import { FiSearch, FiFilter, FiTrendingUp, FiUsers, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 const LearningCenter = () => {
   const [overview, setOverview] = useState(null);
   const [trends, setTrends] = useState([]);
+  const { token } = useAuth();
 
   // Filters
   const [selectedType, setSelectedType] = useState('all');
@@ -34,7 +36,11 @@ const LearningCenter = () => {
         type: selectedType,
         dateRange: dateRange
       });
-      const response = await fetch(`http://localhost:3001/api/learning/overview?${params}`);
+      const response = await fetch(`/api/learning/overview?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setOverview(data);
     } catch (error) {
@@ -52,7 +58,11 @@ const LearningCenter = () => {
       if (startDate) params.append('start', startDate);
       if (endDate) params.append('end', endDate);
       
-      const response = await fetch(`http://localhost:3001/api/learning/trends?${params}`);
+      const response = await fetch(`/api/learning/trends?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setTrends(data);
     } catch (error) {
@@ -64,7 +74,7 @@ const LearningCenter = () => {
   useEffect(() => {
     fetchOverview();
     fetchTrends();
-  }, [selectedType, dateRange]);
+  }, [selectedType, dateRange, token]);
 
   const styles = {
     container: { padding: '2rem' },
