@@ -177,99 +177,99 @@ const syncFolderToTableWithResults = async (folderId, tableName, dealType = null
   };
   
   try {
-    const records = await getRecordsFromFolder(folderId);
-    if (!records || records.length === 0) {
-      console.log(`No records found in folder ${folderId}. Skipping.`);
+  const records = await getRecordsFromFolder(folderId);
+  if (!records || records.length === 0) {
+    console.log(`No records found in folder ${folderId}. Skipping.`);
       return result;
-    }
-    console.log(`Found ${records.length} records in NetHunt.`);
+  }
+  console.log(`Found ${records.length} records in NetHunt.`);
 
-    const tableColumns = await getTableColumns(tableName);
-    const client = await pool.connect();
+  const tableColumns = await getTableColumns(tableName);
+  const client = await pool.connect();
     
-    try {
-      for (const record of records) {
+  try {
+    for (const record of records) {
         try {
-          const recordData = {
-            record_id: record.id,
-            created_at: record.createdAt || null,
-          };
-          for (const fieldName in record.fields) {
-            const columnName = fieldToColumn(fieldName);
-            if (columnName && tableColumns.includes(columnName)) {
-              if (typeof record.fields[fieldName] === 'boolean') {
-                recordData[columnName] = record.fields[fieldName];
-              } else if (['true', 'false'].includes(String(record.fields[fieldName]).toLowerCase())) {
-                recordData[columnName] = String(record.fields[fieldName]).toLowerCase() === 'true';
-              } else {
-                recordData[columnName] = record.fields[fieldName] || null;
-              }
-            }
+      const recordData = {
+        record_id: record.id,
+        created_at: record.createdAt || null,
+      };
+      for (const fieldName in record.fields) {
+        const columnName = fieldToColumn(fieldName);
+        if (columnName && tableColumns.includes(columnName)) {
+          if (typeof record.fields[fieldName] === 'boolean') {
+            recordData[columnName] = record.fields[fieldName];
+          } else if (['true', 'false'].includes(String(record.fields[fieldName]).toLowerCase())) {
+            recordData[columnName] = String(record.fields[fieldName]).toLowerCase() === 'true';
+          } else {
+            recordData[columnName] = record.fields[fieldName] || null;
           }
-          const columns = Object.keys(recordData);
-          const values = Object.values(recordData);
-          const valuePlaceholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-          const updateSet = columns.map(col => `${col} = EXCLUDED.${col}`).join(', ');
-          const query = `
-            INSERT INTO ${tableName} (${columns.join(', ')})
-            VALUES (${valuePlaceholders})
-            ON CONFLICT (record_id) 
-            DO UPDATE SET ${updateSet};
-          `;
-          await client.query(query, values);
+        }
+      }
+      const columns = Object.keys(recordData);
+      const values = Object.values(recordData);
+      const valuePlaceholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+      const updateSet = columns.map(col => `${col} = EXCLUDED.${col}`).join(', ');
+      const query = `
+        INSERT INTO ${tableName} (${columns.join(', ')})
+        VALUES (${valuePlaceholders})
+        ON CONFLICT (record_id) 
+        DO UPDATE SET ${updateSet};
+      `;
+      await client.query(query, values);
           result.count++;
 
-          // --- Stage Change History Sync ---
-          if (dealType) {
-            try {
-              const timeline = await getRecordTimeline(record.id);
-              if (Array.isArray(timeline)) {
-                for (const event of timeline) {
-                  // Only store stage change events
-                  if (event.type === 'stageChanged') {
-                    await client.query(
-                      `INSERT INTO deal_stage_history 
-                        (deal_record_id, contact_record_id, old_stage, new_stage, changed_at, changed_by, deal_type, extra)
-                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                       ON CONFLICT DO NOTHING;`,
-                      [
-                        record.id,
-                        record.fields['контакт'] || record.fields['contacts'] || record.fields['contact_record_id'] || null,
-                        event.oldValue,
-                        event.newValue,
-                        event.createdAt || event.created_at || null,
-                        event.user?.name || event.user || null,
-                        dealType,
-                        event
-                      ]
-                    );
-                  }
-                }
-              }
-            } catch (err) {
-              result.timelineErrors++;
-              if (err.response && err.response.status === 404) {
-                console.warn(`Timeline 404 for record ${record.id} (${tableName}): Not found, skipping timeline.`);
-              } else {
-                console.error(`Error syncing stage history for record ${record.id}:`, err.message);
+      // --- Stage Change History Sync ---
+      if (dealType) {
+        try {
+          const timeline = await getRecordTimeline(record.id);
+          if (Array.isArray(timeline)) {
+            for (const event of timeline) {
+              // Only store stage change events
+              if (event.type === 'stageChanged') {
+                await client.query(
+                  `INSERT INTO deal_stage_history 
+                    (deal_record_id, contact_record_id, old_stage, new_stage, changed_at, changed_by, deal_type, extra)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                   ON CONFLICT DO NOTHING;`,
+                  [
+                    record.id,
+                    record.fields['контакт'] || record.fields['contacts'] || record.fields['contact_record_id'] || null,
+                    event.oldValue,
+                    event.newValue,
+                    event.createdAt || event.created_at || null,
+                    event.user?.name || event.user || null,
+                    dealType,
+                    event
+                  ]
+                );
               }
             }
           }
         } catch (err) {
+              result.timelineErrors++;
+          if (err.response && err.response.status === 404) {
+            console.warn(`Timeline 404 for record ${record.id} (${tableName}): Not found, skipping timeline.`);
+          } else {
+            console.error(`Error syncing stage history for record ${record.id}:`, err.message);
+          }
+        }
+          }
+        } catch (err) {
           result.errors++;
           console.error(`Error processing record ${record.id} in ${tableName}:`, err.message);
-        }
       }
-      console.log(`✅ Successfully synced ${result.count} records to the "${tableName}" table.`);
-      if (dealType) {
-        console.log(`Stage history timeline errors for ${tableName}: ${result.timelineErrors}`);
-      }
-    } catch (error) {
-      console.error(`❌ Error syncing data to ${tableName}:`, error);
-      result.errors++;
-    } finally {
-      client.release();
     }
+      console.log(`✅ Successfully synced ${result.count} records to the "${tableName}" table.`);
+    if (dealType) {
+        console.log(`Stage history timeline errors for ${tableName}: ${result.timelineErrors}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error syncing data to ${tableName}:`, error);
+      result.errors++;
+  } finally {
+    client.release();
+  }
   } catch (error) {
     console.error(`❌ Error in syncFolderToTableWithResults for ${tableName}:`, error);
     result.errors++;

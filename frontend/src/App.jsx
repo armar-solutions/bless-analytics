@@ -16,7 +16,7 @@ import UserManagement from './pages/UserManagement';
 function App() {
   return (
     <AuthProvider>
-      <Router>
+    <Router>
         <Routes>
           {/* Public route */}
           <Route path="/login" element={<LoginForm />} />
@@ -98,7 +98,7 @@ function App() {
           {/* Redirect to login for any unmatched routes */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
+    </Router>
     </AuthProvider>
   );
 }

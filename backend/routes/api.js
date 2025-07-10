@@ -247,15 +247,15 @@ router.get('/learning/overview', authenticateToken, requireManager, async (req, 
         }
       } else {
         // Original logic for other types
-        if (dateRange === 'all' && oldestDate) {
-          whereClause = `WHERE stage = ANY($1) AND created_at >= $2`;
-          params = [signedUpStages[table], oldestDate];
-        } else if (dateRange !== 'all') {
-          whereClause = `WHERE stage = ANY($1) AND created_at >= NOW() - INTERVAL '${dateRange}'`;
-          params = [signedUpStages[table]];
-        } else {
-          whereClause = `WHERE stage = ANY($1)`;
-          params = [signedUpStages[table]];
+      if (dateRange === 'all' && oldestDate) {
+        whereClause = `WHERE stage = ANY($1) AND created_at >= $2`;
+        params = [signedUpStages[table], oldestDate];
+      } else if (dateRange !== 'all') {
+        whereClause = `WHERE stage = ANY($1) AND created_at >= NOW() - INTERVAL '${dateRange}'`;
+        params = [signedUpStages[table]];
+      } else {
+        whereClause = `WHERE stage = ANY($1)`;
+        params = [signedUpStages[table]];
         }
       }
       
