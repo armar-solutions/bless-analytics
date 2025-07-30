@@ -76,7 +76,15 @@ npm install
 
 # Step 4: Build frontend for production
 print_step "4. Building frontend for production..."
-npm run build
+# Create swap space if needed for memory-intensive build
+if ! swapon --show | grep -q "/swapfile"; then
+    print_warning "Creating swap space for build..."
+    sudo fallocate -l 2G /swapfile
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+fi
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
 cd ..
 
 # Step 5: Restart the application
@@ -100,7 +108,7 @@ pm2 status
 
 # Step 8: Show recent logs
 print_step "7. Recent application logs:"
-pm2 logs influencer-analytics-backend --lines 10
+timeout 5s pm2 logs influencer-analytics-backend --lines 10 || echo "No recent logs to display"
 
 print_status "Deployment completed successfully! 🎉"
 echo ""
