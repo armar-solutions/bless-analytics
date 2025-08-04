@@ -254,5 +254,5 @@ For support and questions:
 
 ---
 
-**Last Updated:** December 2024  
+**Last Updated:** July 2025  
 **Version:** 1.0.0 
